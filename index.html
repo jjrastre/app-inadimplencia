@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Inadimplência">
+<meta name="theme-color" content="#c00000">
+<title>Controle diário de inadimplência – JJ 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f3f4f6;--card:#fff;--tx:#1b2430;--mut:#6b7280;--bd:#e2e5ea;--hd:#1b2430;--sel:#1b2430;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12161c;--card:#1b222b;--tx:#e8ebf0;--mut:#9aa4b2;--bd:#2a323d;--hd:#0b0e12;--sel:#e8ebf0}}
+:root[data-theme="dark"]{--bg:#12161c;--card:#1b222b;--tx:#e8ebf0;--mut:#9aa4b2;--bd:#2a323d;--hd:#0b0e12;--sel:#e8ebf0}
+html{color-scheme:light dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 "Segoe UI",system-ui,-apple-system,Arial,sans-serif}
+header{background:var(--hd);color:#fff;padding:18px 16px;display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;border-bottom:4px solid #c00000}
+h1{font-size:18px;margin:0;font-weight:700}
+header small{color:#c5cbd4;display:block;font-weight:400;margin-top:2px}
+select{font:inherit;font-size:16px;padding:8px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx)}
+main{max-width:1100px;margin:0 auto;padding:14px;display:grid;gap:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;min-width:0}
+.k b{display:block;font-size:26px;margin-top:4px}
+.k span{color:var(--mut);font-size:13px}
+.up{color:#c0392b}.down{color:#1e8449}
+h2{font-size:15px;margin:0 0 10px}
+.cv{position:relative;height:260px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:520px}
+th,td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--bd)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--mut);font-weight:600}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.form .bar input{font:inherit;font-size:16px;padding:8px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx)}
+.form td input{width:62px;padding:6px;text-align:right;font:inherit;font-size:16px;border-radius:6px;border:1px solid var(--bd);background:var(--bg);color:var(--tx)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+button{font:inherit;font-weight:600;padding:9px 16px;border:0;border-radius:8px;background:#c00000;color:#fff;cursor:pointer}
+button.sec{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+button:disabled{opacity:.5;cursor:default}
+#msg,#modo{color:var(--mut);font-size:13px}
+#modo{margin:0 0 10px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Controle diário de inadimplência</h1>
+    <small id="sub"></small>
+  </div>
+  <label>Dia: <select id="dia"></select></label>
+</header>
+<main>
+  <section class="kpis" id="kpis" aria-label="Indicadores do dia"></section>
+  <section class="card"><h2>Total geral por dia</h2><div class="cv"><canvas id="cTotal" role="img" aria-label="Gráfico de linha do total de parcelas vencidas por dia"></canvas></div></section>
+  <section class="grid2">
+    <div class="card"><h2 id="tFaixa">Parcelas vencidas por cidade</h2><div class="cv"><canvas id="cFaixa" role="img" aria-label="Gráfico de barras empilhadas de parcelas vencidas por cidade no dia selecionado"></canvas></div></div>
+    <div class="card"><h2>Evolução por cidade</h2><div class="cv"><canvas id="cFil" role="img" aria-label="Gráfico de linhas com a evolução do total de cada cidade"></canvas></div></div>
+  </section>
+  <section class="card form"><h2>Lançar dados do dia</h2>
+    <p id="modo"></p>
+    <div class="bar" id="login" hidden>
+      <input type="email" id="em" autocomplete="username" placeholder="E-mail" aria-label="E-mail">
+      <input type="password" id="pw" autocomplete="current-password" placeholder="Senha" aria-label="Senha">
+      <button id="entrar" type="button">Entrar</button>
+    </div>
+    <div id="entrada">
+      <div class="bar">
+        <input type="date" id="fdata" aria-label="Data do lançamento">
+        <button id="salvar" type="button">Salvar dia</button>
+        <button id="sair" type="button" class="sec" hidden>Sair</button>
+        <span id="msg" role="status"></span>
+      </div>
+      <div class="scroll"><table id="ftab"></table></div>
+    </div>
+  </section>
+  <section class="card"><h2 id="tVar">Variação por cidade</h2><div class="scroll"><table id="tab"></table></div></section>
+</main>
+<script>
+/* ===== CONFIGURAÇÃO ===== */
+// Para compartilhar os dados com a gerência, cole aqui o objeto de configuração do Firebase (veja o README.md).
+// Enquanto estiver null, o app funciona em "modo local": os dados ficam só neste navegador.
+const FIREBASE_CONFIG=null;
+/* ======================== */
+
+const F=[["Itapecuru","#c00000"],["V. Grande","#1f6e9c"],["Arari","#1f7a33"],["S. Mateus","#a0289a"],["S. Rita","#0b78d1"],["Rosário","#ee7a30"],["Miranda","#7cb83a"]];
+// Cada dia = 35 números: 7 cidades × 5 faixas (1, 2, 3, 4 e 5 parcelas vencidas), na ordem de F.
+// Começa vazio: os dias são lançados pelo formulário "Lançar dados do dia".
+const SEED={};
+
+const MIN="2026-10-01";
+const LS="inadimp2026";
+const $=id=>document.getElementById(id);
+const dt=k=>new Date(k+"T00:00:00Z");
+const iso=d=>d.toISOString().slice(0,10);
+const fmt=k=>k.slice(8)+"/"+k.slice(5,7);
+const sum=a=>a.reduce((x,y)=>x+y,0);
+const nf=n=>n.toLocaleString("pt-BR");
+const WD=["dom","seg","ter","qua","qui","sex","sáb"];
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* validação: nada que vem do navegador ou do banco entra na tela sem passar por aqui */
+const hoje=new Date();
+const MAXD=iso(new Date(Date.UTC(hoje.getFullYear(),hoje.getMonth(),hoje.getDate()+1)));
+const validId=k=>typeof k==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(k)&&!isNaN(Date.parse(k+"T00:00:00Z"))&&iso(dt(k))===k&&k>=MIN&&k<=MAXD;
+const cleanV=v=>Array.isArray(v)&&v.length===35&&v.every(n=>Number.isInteger(n)&&n>=0&&n<1e6)?v:null;
+const cleanAll=o=>{const r={};if(o&&typeof o==="object")for(const k in o){if(validId(k)){const v=cleanV(o[k]);if(v)r[k]=v}}return r};
+
+let LOC={};try{LOC=cleanAll(JSON.parse(localStorage.getItem(LS)||"{}"))}catch(e){}
+let DATA={...SEED,...LOC},dbRef=null,auth=null,canWrite=false,mode="local";
+const city=(k,c)=>DATA[k].slice(c*5,c*5+5);
+const chg=(a,b)=>b?(a-b)/b*100:null;
+const pct=v=>v==null?"—":(v>0?"+":"")+v.toFixed(1).replace(".",",")+"%";
+const cls=v=>v>0?"up":v<0?"down":"";
+const share=(a,b)=>b?(a/b*100).toFixed(0):"0";
+const say=t=>{$("msg").textContent=t};
+const sel=$("dia");
+
+/* gráficos */
+Chart.defaults.font.family="Segoe UI,system-ui,Arial,sans-serif";
+const opt=(x={})=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{boxWidth:10,color:css("--tx")}}},scales:{x:{ticks:{color:css("--mut")},grid:{display:false}},y:{ticks:{color:css("--mut")},grid:{color:css("--bd")}}},...x});
+const cTotal=new Chart("cTotal",{type:"line",data:{labels:[],datasets:[{label:"Total",data:[],borderColor:"#c00000",backgroundColor:"rgba(192,0,0,.12)",fill:true,tension:.25,spanGaps:true}]},options:opt({plugins:{legend:{display:false}}})});
+const cFil=new Chart("cFil",{type:"line",data:{labels:[],datasets:F.map(f=>({label:f[0],data:[],borderColor:f[1],backgroundColor:f[1],tension:.25,spanGaps:true,pointRadius:2}))},options:opt()});
+const fc=["#c00000","#ee7a30","#e5b800","#6b7280",css("--sel")];
+const cFaixa=new Chart("cFaixa",{type:"bar",data:{labels:F.map(f=>f[0]),datasets:fc.map((c,k)=>({label:(k+1)+(k?" parcelas":" parcela"),data:[],backgroundColor:c}))},options:opt({scales:{x:{stacked:true,ticks:{color:css("--mut")},grid:{display:false}},y:{stacked:true,ticks:{color:css("--mut")},grid:{color:css("--bd")}}}})});
+function themeCharts(){
+  const tx=css("--tx"),mut=css("--mut"),bd=css("--bd");
+  [cTotal,cFil,cFaixa].forEach(c=>{
+    const l=c.options.plugins.legend.labels;if(l)l.color=tx;
+    c.options.scales.x.ticks.color=mut;c.options.scales.y.ticks.color=mut;c.options.scales.y.grid.color=bd;
+  });
+  cFaixa.data.datasets[4].backgroundColor=css("--sel");
+}
+
+function renderVazio(){
+  $("sub").textContent="nenhum dia lançado";
+  sel.innerHTML="";
+  $("kpis").innerHTML='<div class="card k"><span>Nenhum dia lançado ainda</span><b>—</b><span>Use "Lançar dados do dia" abaixo.</span></div>';
+  [cTotal,cFil,cFaixa].forEach(c=>{c.data.labels=c===cFaixa?F.map(f=>f[0]):[];c.data.datasets.forEach(d=>d.data=[]);c.update()});
+  $("tFaixa").textContent="Parcelas vencidas por cidade";
+  $("tVar").textContent="Variação por cidade";
+  $("tab").innerHTML='<caption class="sr">Sem dados</caption><tr><td>Sem dados para exibir.</td></tr>';
+}
+function render(){
+  const keys=Object.keys(DATA).sort();
+  if(!keys.length){renderVazio();return}
+  const first=keys[0],last=keys[keys.length-1];
+  const all=[];for(let d=dt(first);iso(d)<=last;d=new Date(d.getTime()+864e5))all.push(iso(d));
+  const tot=k=>DATA[k]?sum(DATA[k]):null;
+  $("sub").textContent=fmt(first)+" a "+fmt(last)+" · "+keys.length+" dias lançados";
+  const cur=sel.value&&DATA[sel.value]?sel.value:last;
+  sel.innerHTML=keys.map(k=>`<option value="${k}">${fmt(k)} (${WD[dt(k).getUTCDay()]})</option>`).join("");sel.value=cur;
+  const i=cur,t=tot(i),pi=keys.indexOf(i),prev=pi>0?keys[pi-1]:null;
+  const dp=prev?chg(t,tot(prev)):null,df=chg(t,tot(first));
+  const ft=k=>F.map((_,c)=>sum(city(k,c)));
+  const fi=ft(i),top=fi.indexOf(Math.max(...fi));
+  const late=t-F.reduce((a,_,c)=>a+city(i,c)[0],0);
+  $("kpis").innerHTML=`<div class="card k"><span>Total em ${fmt(i)}</span><b>${nf(t)}</b></div>
+   <div class="card k"><span>vs. dia anterior lançado</span><b class="${cls(dp)}">${pct(dp)}</b></div>
+   <div class="card k"><span>vs. ${fmt(first)}</span><b class="${cls(df)}">${pct(df)}</b></div>
+   <div class="card k"><span>Maior cidade</span><b>${F[top][0]}</b><span>${nf(fi[top])} (${share(fi[top],t)}%)</span></div>
+   <div class="card k"><span>2+ parcelas vencidas</span><b>${nf(late)}</b><span>${share(late,t)}% do total</span></div>`;
+  const sc=css("--sel");
+  cTotal.data.labels=cFil.data.labels=all.map(fmt);
+  cTotal.data.datasets[0].data=all.map(tot);
+  cTotal.data.datasets[0].pointBackgroundColor=all.map(k=>k==i?sc:"#c00000");
+  cTotal.data.datasets[0].pointRadius=all.map(k=>k==i?7:4);
+  cFil.data.datasets.forEach((d,c)=>d.data=all.map(k=>DATA[k]?sum(city(k,c)):null));
+  cFaixa.data.datasets.forEach((d,k)=>d.data=F.map((_,c)=>city(i,c)[k]));
+  [cTotal,cFil,cFaixa].forEach(c=>c.update());
+  $("tFaixa").textContent="Parcelas vencidas por cidade em "+fmt(i);
+  $("tVar").textContent="Variação por cidade ("+fmt(first)+" → "+fmt(last)+")";
+  const f0=ft(first),f1=ft(last);
+  $("tab").innerHTML=`<caption class="sr">Variação do total por cidade entre ${fmt(first)} e ${fmt(last)}, com as faixas do dia ${fmt(i)}</caption>`+
+   `<tr><th scope="col">Cidade</th><th scope="col">${fmt(first)}</th><th scope="col">${fmt(last)}</th><th scope="col">Variação</th><th scope="col">${fmt(i)} (parcelas 1–5)</th></tr>`+
+   F.map((f,c)=>{const v=chg(f1[c],f0[c]);return `<tr><td><span class="dot" style="background:${f[1]}"></span>${f[0]}</td><td>${nf(f0[c])}</td><td>${nf(f1[c])}</td><td class="${cls(v)}">${pct(v)}</td><td>${city(i,c).join(" · ")}</td></tr>`}).join("")+
+   `<tr><th scope="row">Total</th><th>${nf(tot(first))}</th><th>${nf(tot(last))}</th><th class="${cls(tot(last)-tot(first))}">${pct(chg(tot(last),tot(first)))}</th><th></th></tr>`;
+}
+
+/* formulário */
+$("ftab").innerHTML="<caption class=\"sr\">Parcelas vencidas por cidade e faixa</caption><tr><th scope=\"col\">Cidade</th>"+[1,2,3,4,5].map(n=>`<th scope="col">${n}</th>`).join("")+"</tr>"+
+  F.map((f,c)=>`<tr><td><span class="dot" style="background:${f[1]}"></span>${f[0]}</td>`+[0,1,2,3,4].map(k=>`<td><input type="number" min="0" step="1" inputmode="numeric" data-i="${c*5+k}" aria-label="${f[0]}, ${k+1} ${k?"parcelas":"parcela"} vencida${k?"s":""}"></td>`).join("")+"</tr>").join("");
+const ins=[...document.querySelectorAll("#ftab input")];
+$("fdata").min=MIN;$("fdata").max=MAXD;
+function fill(keep){const v=DATA[$("fdata").value];ins.forEach((e,n)=>e.value=v?v[n]:"");if(!keep)say(v?"Dia já lançado: editar substitui os valores.":"");}
+$("fdata").onchange=()=>fill();
+function nextDay(){
+  const ks=Object.keys(DATA).sort(),lk=ks[ks.length-1];
+  let n=lk?iso(new Date(dt(lk).getTime()+864e5)):iso(new Date(Date.UTC(hoje.getFullYear(),hoje.getMonth(),hoje.getDate())));
+  if(n<MIN)n=MIN;
+  if(n>MAXD)n=lk||MAXD;
+  $("fdata").value=n;
+}
+
+$("salvar").onclick=async()=>{
+  const k=$("fdata").value;
+  if(!validId(k)){say("Escolha uma data válida (de "+fmt(MIN)+" até amanhã).");return}
+  const raw=ins.map(e=>e.value.trim());
+  if(raw.some(x=>x!==""&&!/^\d{1,6}$/.test(x))){say("Use apenas números inteiros, sem negativos.");return}
+  const vazios=raw.filter(x=>x==="").length;
+  if(vazios&&!confirm(vazios+" campo(s) vazio(s) serão salvos como 0. Continuar?"))return;
+  if(DATA[k]&&!confirm("Já existe lançamento em "+fmt(k)+". Substituir?"))return;
+  const v=raw.map(x=>x===""?0:parseInt(x,10));
+  if(mode==="cloud"){
+    if(!canWrite){say("Entre com seu e-mail e senha para gravar.");return}
+    $("salvar").disabled=true;
+    try{await dbRef.collection("dias").doc(k).set({v});DATA[k]=v;say("Salvo em "+fmt(k)+" e compartilhado.")}
+    catch(e){say("Erro ao gravar ("+(e.code||"desconhecido")+"). Nada foi salvo.");$("salvar").disabled=false;return}
+    $("salvar").disabled=false;
+  }else{
+    DATA[k]=v;LOC[k]=v;
+    try{localStorage.setItem(LS,JSON.stringify(LOC));say("Salvo em "+fmt(k)+" (só neste navegador).")}
+    catch(e){say("Não foi possível salvar neste navegador. Dado só nesta tela.")}
+  }
+  sel.value=k;render();nextDay();fill(true);
+};
+sel.onchange=render;
+
+/* nuvem (Firebase) — opcional */
+const loadScript=src=>new Promise((ok,err)=>{const s=document.createElement("script");s.src=src;s.onload=ok;s.onerror=err;document.head.appendChild(s)});
+function authUI(u){
+  const cloud=mode==="cloud";
+  $("login").hidden=!cloud||!!u;
+  $("entrada").hidden=cloud&&!u;
+  $("sair").hidden=!cloud||!u;
+  $("modo").textContent=cloud?(u?"Conectado como "+u.email+". Os lançamentos ficam visíveis para todos que abrirem este link.":"Visualização compartilhada. Para lançar dados, entre com seu e-mail e senha."):"Modo local: os dados lançados ficam só neste navegador.";
+}
+async function initCloud(){
+  if(!FIREBASE_CONFIG){authUI(null);return}
+  try{
+    const b="https://www.gstatic.com/firebasejs/10.12.2/";
+    await loadScript(b+"firebase-app-compat.js");
+    await Promise.all([loadScript(b+"firebase-firestore-compat.js"),loadScript(b+"firebase-auth-compat.js")]);
+    firebase.initializeApp(FIREBASE_CONFIG);
+    auth=firebase.auth();dbRef=firebase.firestore();
+    mode="cloud";DATA={...SEED};render();nextDay();fill();
+    auth.onAuthStateChanged(u=>{canWrite=!!u;authUI(u)});
+    dbRef.collection("dias").onSnapshot(snap=>{
+      const C={};
+      snap.docs.forEach(d=>{const v=cleanV((d.data()||{}).v);if(v&&validId(d.id))C[d.id]=v});
+      DATA={...SEED,...C};render();
+    },e=>{say("Falha ao sincronizar ("+(e.code||"erro")+"). Os dados podem estar desatualizados.")});
+  }catch(e){mode="local";authUI(null);say("Não foi possível conectar à nuvem. Usando modo local.")}
+}
+$("entrar").onclick=async()=>{
+  try{await auth.signInWithEmailAndPassword($("em").value.trim(),$("pw").value);$("pw").value="";say("")}
+  catch(e){say("Não foi possível entrar ("+(e.code||"erro")+").")}
+};
+$("sair").onclick=()=>auth&&auth.signOut();
+
+/* início */
+themeCharts();
+matchMedia("(prefers-color-scheme:dark)").addEventListener("change",()=>{themeCharts();render()});
+render();nextDay();fill();
+initCloud();
+</script>
+</body>
+</html>

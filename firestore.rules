@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /dias/{dia} {
+      // Qualquer pessoa com o link consegue VER os dados (gerência).
+      // Para exigir login também na leitura, troque por: allow read: if request.auth != null;
+      allow read: if true;
+
+      // Só usuário logado grava, e só no formato esperado (35 números).
+      // Para travar em uma única pessoa, acrescente: && request.auth.uid == "COLE_SEU_UID_AQUI"
+      allow create, update: if request.auth != null
+        && dia.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.keys().hasOnly(['v'])
+        && request.resource.data.v is list
+        && request.resource.data.v.size() == 35;
+
+      allow delete: if false;
+    }
+  }
+}
